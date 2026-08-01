@@ -1,0 +1,43 @@
+# 数据清洗配置文件
+
+# 输入输出路径
+input_path: D:\桌面\DE\data\raw\DataAnalyst.csv
+output_path: D:\桌面\DE\data\clean\jobs_clean.csv
+
+# 无效值替换（将指定值替换为 null）
+replace_invalid_values:
+  -1: null
+
+# 公司名清洗规则
+company_name:
+  enabled: true
+  columns:
+    - Company Name
+  split_on: "\n" # 按换行符拆分
+  split_index: 0 # 取拆分后的第一部分
+
+# 薪资估算清洗规则
+salary_estimate:
+  enabled: true
+  columns:
+    - Salary Estimate
+  replace_texts: # 要移除的文本列表
+    - "(Glassdoor est.)"
+
+# 去重规则
+dedup:
+  enabled: true
+
+# 要删除的列
+drop_columns:
+  - "Unnamed: 0"
+
+# 缺失率统计和告警
+missing_rate:
+  columns:
+    - Company Name
+    - Salary Estimate
+    - Location
+    - Job Title
+    - Industry
+  warn_threshold: 0.30 # 30% 以上缺失率警告

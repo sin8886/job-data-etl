@@ -1,0 +1,31 @@
+# Secrets
+.env
+env
+
+# Local env files
+*.env
+
+# Logs
+etl.log
+*.log
+
+# Python cache and local environment
+__pycache__/
+de_env/
+*.pyc
+.venv/
+venv/
+
+# IDE files
+.idea/
+.vscode/
+
+# Generated outputs
+artifacts/
+data/clean/
+report.md
+sample_company_top.md
+data-*.csv
+
+# OS files
+.DS_Store

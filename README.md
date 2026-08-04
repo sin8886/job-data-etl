@@ -94,3 +94,13 @@ CSV 在 Excel/WPS 预览“看起来乱”通常是导入参数问题（应使�
 增加 requirements.txt 与一键启动脚本
 增加更完整的数据质量指标（异常值、分布漂移）
 ```
+
+## Data Quality Checks
+
+The pipeline includes automated data quality validation:
+
+- Row count validation
+- Null rate monitoring
+- Column uniqueness checks
+
+Quality checks are implemented with reusable Python functions and covered by pytest.

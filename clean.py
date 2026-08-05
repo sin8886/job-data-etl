@@ -7,7 +7,6 @@ import pandas as pd
 import typer
 import yaml
 
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -24,21 +23,23 @@ def load_config(config_path=None):
     """加载YAML配置，支持环境变量覆盖"""
     config_file = config_path or os.getenv("ETL_CLEAN_CONFIG_FILE") or CONFIG_FILE
     config_file = Path(config_file)
-    
+
     if not config_file.exists():
         logger.warning(f"配置文件不存在: {config_file}，使用默认值")
         return {}
-    
+
     with open(config_file, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
-    
+
     logger.info(f"已加载配置: {config_file}")
     return config
 
 
 CLEAN_CONFIG = load_config()
 DEFAULT_INPUT = CLEAN_CONFIG.get("input_path", r"D:\桌面\DE\data\raw\DataAnalyst.csv")
-DEFAULT_OUTPUT = CLEAN_CONFIG.get("output_path", r"D:\桌面\DE\data\clean\jobs_clean.csv")
+DEFAULT_OUTPUT = CLEAN_CONFIG.get(
+    "output_path", r"D:\桌面\DE\data\clean\jobs_clean.csv"
+)
 
 
 def load_data(file_path, config=None):
@@ -97,7 +98,9 @@ def clean_salary_estimates(df, config=None):
         return df
 
     result = df.copy()
-    replace_texts = _ensure_list(salary_config.get("replace_texts", ["(Glassdoor est.)"]))
+    replace_texts = _ensure_list(
+        salary_config.get("replace_texts", ["(Glassdoor est.)"])
+    )
     for col in _ensure_list(salary_config.get("columns", ["Salary Estimate"])):
         if col in result.columns:
             for text in replace_texts:
@@ -150,7 +153,9 @@ def _log_missing_rates(df, columns, warn_threshold=0.30):
     if summary_parts:
         logger.info("关键列缺失率: %s", "; ".join(summary_parts))
     if warning_parts:
-        logger.warning("高缺失列(>=%.0f%%): %s", warn_threshold * 100, ", ".join(warning_parts))
+        logger.warning(
+            "高缺失列(>=%.0f%%): %s", warn_threshold * 100, ", ".join(warning_parts)
+        )
 
 
 def run_pipeline(input_path, output_path, config=None):
@@ -179,12 +184,22 @@ def run_pipeline(input_path, output_path, config=None):
             after_dedup,
             before_dedup - after_dedup,
         )
-
+        # 生成唯一职位ID
+        df.insert(0, "job_id", range(1, len(df) + 1))
         # 3. 缺失率（关键列）
         missing_config = cfg.get("missing_rate", {})
         _log_missing_rates(
             df,
-            columns=missing_config.get("columns", ["Company Name", "Salary Estimate", "Location", "Job Title", "Industry"]),
+            columns=missing_config.get(
+                "columns",
+                [
+                    "Company Name",
+                    "Salary Estimate",
+                    "Location",
+                    "Job Title",
+                    "Industry",
+                ],
+            ),
             warn_threshold=missing_config.get("warn_threshold", 0.30),
         )
 

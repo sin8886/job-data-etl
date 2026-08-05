@@ -5,6 +5,7 @@ from pathlib import Path
 
 import typer
 
+from quality import check_row_count, check_null_rate, check_unique
 from clean import DEFAULT_INPUT, DEFAULT_OUTPUT, run_pipeline
 from load_to_postgres import (
     CSV_PATH,
@@ -73,14 +74,24 @@ def compute_top_by_column(df, group_col: str, target_col: str, top_n: int = 1):
     counts = df.groupby([group_col, target_col]).size().reset_index(name="count")
 
     # 2. 在每个 company 内按 count 排序并排名（使用 first 保证稳定）
-    counts["rn"] = counts.groupby(group_col)["count"].rank(method="first", ascending=False).astype(int)
+    counts["rn"] = (
+        counts.groupby(group_col)["count"]
+        .rank(method="first", ascending=False)
+        .astype(int)
+    )
 
     # 3. 取 Top N
-    result = counts[counts["rn"] <= int(top_n)].sort_values([group_col, "rn"]).reset_index(drop=True)
+    result = (
+        counts[counts["rn"] <= int(top_n)]
+        .sort_values([group_col, "rn"])
+        .reset_index(drop=True)
+    )
     return result
 
 
-def write_company_top_report(top_df, report_path: str, group_col: str, target_col: str, count_col: str = "count"):
+def write_company_top_report(
+    top_df, report_path: str, group_col: str, target_col: str, count_col: str = "count"
+):
     """将 top_df 写成带有小节的 Markdown 报告。
 
     top_df 预期包含列: group_col, target_col, count_col，和可选的 rn
@@ -137,12 +148,35 @@ def generate_company_top_reports(df, output_base: str = "company_top_report") ->
     return results
 
 
+def run_quality_checks(df):
+    """
+    Execute data quality checks.
+    """
+
+    results = []
+
+    # 1. 行数检查
+    results.append(check_row_count(df))
+
+    # 2. 空值率检查
+    results.append(check_null_rate(df, threshold=0.2))
+
+    # 3. 唯一性检查
+    # 检查ETL生成的唯一ID
+    if "job_id" in df.columns:
+        results.append(check_unique(df, "job_id"))
+
+    return results
+
+
 @app.command()
 def run(
     mode: str = typer.Option("prod", help="Run mode label."),
     input_path: str = typer.Option(DEFAULT_INPUT, help="Input CSV path."),
     output_path: str = typer.Option(DEFAULT_OUTPUT, help="Clean CSV output path."),
-    report_path: str = typer.Option(DEFAULT_REPORT, help="Markdown report output path."),
+    report_path: str = typer.Option(
+        DEFAULT_REPORT, help="Markdown report output path."
+    ),
     csv_path: Optional[str] = typer.Option(
         None, help="Override CSV path for load (defaults to clean output)."
     ),
@@ -168,6 +202,24 @@ def run(
 
     df = run_pipeline(input_path, output_path)
 
+    # =========================
+    # Data Quality Check
+    # =========================
+
+    quality_results = run_quality_checks(df)
+
+    for result in quality_results:
+
+        if result["passed"]:
+
+            logger.info("Quality check passed: %s", result)
+
+        else:
+
+            logger.error("Quality check failed: %s", result)
+
+            raise typer.Exit(code=1)
+
     if not skip_load:
         effective_csv = csv_path or output_path or CSV_PATH
         exit_code = load_main(
@@ -178,12 +230,14 @@ def run(
             db_host,
             db_port,
         )
+
         if exit_code != 0:
             raise typer.Exit(code=exit_code)
 
     if not skip_report:
         generate_report(df, report_path)
         logger.info("report written: path=%s", report_path)
+
         # 可选：生成每公司 Top 报告并写入 artifacts
         if include_top_reports:
             try:
@@ -192,23 +246,29 @@ def run(
                 artifacts_dir.mkdir(parents=True, exist_ok=True)
 
                 output_base = str(artifacts_dir / "company_top")
-                company_results = generate_company_top_reports(df, output_base=output_base)
+                company_results = generate_company_top_reports(
+                    df, output_base=output_base
+                )
 
-                # 若需要，追加到主 report
                 if append_to_report:
+
                     def _append_if_exists(src_path, dest_path):
                         if isinstance(src_path, str) and Path(src_path).exists():
-                            with open(src_path, "r", encoding="utf-8") as sf, open(dest_path, "a", encoding="utf-8") as dfp:
+                            with open(src_path, "r", encoding="utf-8") as sf, open(
+                                dest_path, "a", encoding="utf-8"
+                            ) as dfp:
                                 dfp.write("\n\n")
                                 dfp.write(sf.read())
 
                     jobs_md = company_results.get("jobs_md")
                     _append_if_exists(jobs_md, report_path)
+
                     skills_md = company_results.get("skills_md")
                     if skills_md:
                         _append_if_exists(skills_md, report_path)
 
                 logger.info("generated company top reports in: %s", artifacts_dir)
+
             except Exception:
                 logger.exception("failed to generate/append company top reports")
 

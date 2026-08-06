@@ -21,11 +21,13 @@ venv/
 .vscode/
 
 # Generated outputs
+data/raw/DataAnalyst_big.csv
 artifacts/
 data/clean/
 report.md
 sample_company_top.md
 data-*.csv
+make_big_data.py
 
 # OS files
 .DS_Store

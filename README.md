@@ -352,6 +352,14 @@ Generate Report
 
 ---
 
+## Data Visualization
+
+The pipeline also generates visualization reports.
+
+### Top 10 Companies by Job Count
+
+![Top Companies](top10_companies.png)
+
 # 验证结果
 
 当前 Pipeline 运行结果：

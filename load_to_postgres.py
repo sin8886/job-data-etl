@@ -6,7 +6,6 @@ import pandas as pd
 import psycopg2
 import typer
 
-
 LOG_FILE = os.getenv("ETL_LOG_FILE", "etl.log")
 FILE_LOG_LEVEL = os.getenv("ETL_FILE_LEVEL", "INFO").upper()
 CONSOLE_LOG_LEVEL = os.getenv("ETL_CONSOLE_LEVEL", "INFO").upper()
@@ -30,7 +29,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def _load_env_file(file_name: str) -> bool:
-    file_path = file_name if os.path.isabs(file_name) else os.path.join(BASE_DIR, file_name)
+    file_path = (
+        file_name if os.path.isabs(file_name) else os.path.join(BASE_DIR, file_name)
+    )
     if not os.path.exists(file_path):
         return False
 
@@ -85,17 +86,26 @@ def main(
     db_port: str,
 ) -> int:
     start = time.perf_counter()
-    logger.info("日志输出: file=%s file_level=%s console_level=%s", LOG_FILE, FILE_LOG_LEVEL, CONSOLE_LOG_LEVEL)
+    logger.info(
+        "日志输出: file=%s file_level=%s console_level=%s",
+        LOG_FILE,
+        FILE_LOG_LEVEL,
+        CONSOLE_LOG_LEVEL,
+    )
 
     if not db_password:
-        logger.error("未提供数据库密码：请在 .env/env 或系统环境变量中设置 PGPASSWORD 或 DB_PASSWORD")
+        logger.error(
+            "未提供数据库密码：请在 .env/env 或系统环境变量中设置 PGPASSWORD 或 DB_PASSWORD"
+        )
         return 4
 
     # 1. 读取 clean 数据
     try:
         df = pd.read_csv(csv_path)
         df = df.where(pd.notna(df), None)
-        logger.info("CSV 读取成功: path=%s rows=%d cols=%d", csv_path, len(df), len(df.columns))
+        logger.info(
+            "CSV 读取成功: path=%s rows=%d cols=%d", csv_path, len(df), len(df.columns)
+        )
     except Exception as e:
         logger.error("CSV 读取失败: path=%s err=%s", csv_path, e)
         return 1
@@ -112,7 +122,13 @@ def main(
             port=db_port,
         )
         cur = conn.cursor()
-        logger.info("数据库连接成功: db=%s host=%s port=%s user=%s", db_name, db_host, db_port, db_user)
+        logger.info(
+            "数据库连接成功: db=%s host=%s port=%s user=%s",
+            db_name,
+            db_host,
+            db_port,
+            db_user,
+        )
 
         # 提醒：重复运行会插入重复 jobs（目前未做幂等/upsert）
         try:
@@ -189,8 +205,21 @@ def main(
 
                 cur.execute(
                     """
-                    INSERT INTO jobs (title, company_id, location, salary_estimate, easy_apply)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO jobs
+                    (
+                        title,
+                        company_id,
+                        location,
+                        salary_estimate,
+                        easy_apply
+                    )
+                    VALUES (%s,%s,%s,%s,%s)
+
+                    ON CONFLICT(company_id,title,location)
+                    DO UPDATE SET
+                        salary_estimate = EXCLUDED.salary_estimate,
+                        easy_apply = EXCLUDED.easy_apply;
+                    
                     """,
                     (
                         row["Job Title"],

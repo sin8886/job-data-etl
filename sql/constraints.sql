@@ -1,11 +1,8 @@
-ALTER TABLE companies
-ADD CONSTRAINT companies_name_unique
-UNIQUE(name);
-
-ALTER TABLE jobs
-ADD CONSTRAINT jobs_unique
-UNIQUE (
-    company_id,
-    title,
-    location
-);
+-- =========================================
+-- Constraints
+-- =========================================
+-- All primary keys, unique constraints and
+-- foreign keys are defined directly in schema.sql.
+--
+-- This file is reserved for future ALTER TABLE
+-- statements if additional constraints are needed.

@@ -352,6 +352,24 @@ Generate Report
 
 ---
 
+## Database Optimization
+
+Indexes added:
+
+- idx_jobs_company_id
+- idx_jobs_title
+
+Example:
+
+EXPLAIN ANALYZE
+SELECT \*
+FROM jobs
+WHERE company_id = 10;
+
+Execution plan:
+
+Index Scan using idx_jobs_company_id
+
 ## Data Visualization
 
 The pipeline also generates visualization reports.

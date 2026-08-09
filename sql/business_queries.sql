@@ -1,6 +1,9 @@
+-- 1. Count the number of distinct companies
 SELECT COUNT(DISTINCT name)
 FROM companies;
 
+
+-- 2. Count jobs from companies in the tech industry
 SELECT COUNT(*)
 FROM jobs
 WHERE company_id IN (
@@ -9,6 +12,8 @@ WHERE company_id IN (
     WHERE industry ILIKE '%tech%'
 );
 
+
+-- 3. Find companies that have at least one job posting
 SELECT name
 FROM companies c
 WHERE EXISTS (
@@ -17,13 +22,20 @@ WHERE EXISTS (
     WHERE j.company_id = c.id
 );
 
-SELECT title, COUNT(*)
+
+-- 4. Find duplicate job titles
+SELECT
+    title,
+    COUNT(*) AS job_count
 FROM jobs
 GROUP BY title
 HAVING COUNT(*) > 1;
 
-SELECT location, COUNT(*)
+
+-- 5. Count jobs by location
+SELECT
+    location,
+    COUNT(*) AS job_count
 FROM jobs
 GROUP BY location
-ORDER BY COUNT(*) DESC;
-
+ORDER BY job_count DESC;

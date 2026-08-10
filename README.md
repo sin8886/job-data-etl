@@ -352,6 +352,39 @@ Generate Report
 
 ---
 
+Incremental Load
+
+### Incremental Load
+
+The pipeline performs incremental loading using a business key:
+
+- Company Name
+- Job Title
+- Location
+
+Existing records are queried from PostgreSQL first, and only unseen records are loaded into the database.
+
+A helper script `make_incremental_test_data.py` is included for generating test data to verify incremental loading.
+Business Key:
+
+- Company Name
+- Job Title
+- Location
+
+Pipeline workflow:
+
+Extract
+↓
+Transform
+↓
+Incremental Filter
+↓
+Validate
+↓
+UPSERT
+↓
+Audit
+
 ## Database Optimization
 
 Indexes added:

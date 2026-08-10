@@ -134,16 +134,19 @@ def main(
         try:
             cur.execute("SELECT COUNT(*) FROM jobs;")
             existing_jobs = int(cur.fetchone()[0])
+
             cur.execute("SELECT COUNT(*) FROM companies;")
             existing_companies = int(cur.fetchone()[0])
+
             if existing_jobs > 0 or existing_companies > 0:
-                logger.warning(
-                    "检测到表已有数据：jobs=%d companies=%d。重复运行会追加数据（可能产生重复）。",
+                logger.info(
+                    "Existing data detected: jobs=%d companies=%d. "
+                    "Incremental Load enabled, only new business records will be processed.",
                     existing_jobs,
                     existing_companies,
                 )
+
         except Exception:
-            # 不阻塞主流程
             logger.debug("无法读取现有行数（忽略）", exc_info=True)
         logger.info("开始同步数据到 PostgreSQL...")
 

@@ -1,7 +1,13 @@
 import psycopg2
 from datetime import datetime
 
-from load_to_postgres import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
+from load_to_postgres import (
+    DB_NAME,
+    DB_USER,
+    DB_PASSWORD,
+    DB_HOST,
+    DB_PORT,
+)
 
 
 def get_db_config():
@@ -15,7 +21,7 @@ def get_db_config():
     }
 
 
-def create_run():
+def create_run(run_type="incremental"):
 
     conn = psycopg2.connect(**get_db_config())
 
@@ -26,16 +32,22 @@ def create_run():
         INSERT INTO pipeline_runs
         (
             started_at,
-            status
+            status,
+            run_type
         )
         VALUES
         (
+            %s,
             %s,
             %s
         )
         RETURNING run_id;
         """,
-        (datetime.now(), "RUNNING"),
+        (
+            datetime.now(),
+            "RUNNING",
+            run_type,
+        ),
     )
 
     run_id = cur.fetchone()[0]
@@ -63,7 +75,12 @@ def update_run(run_id, row_count, status):
             status=%s
         WHERE run_id=%s;
         """,
-        (datetime.now(), row_count, status, run_id),
+        (
+            datetime.now(),
+            row_count,
+            status,
+            run_id,
+        ),
     )
 
     conn.commit()

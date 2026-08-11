@@ -385,6 +385,54 @@ UPSERT
 ↓
 Audit
 
+ETL Pipeline
+
+Architecture
+
+CSV
+↓
+Extract
+↓
+Transform
+↓
+Validate
+↓
+Incremental / Backfill
+↓
+PostgreSQL
+↓
+Audit
+
+然后下面写：
+
+Features
+
+✔ Config (.env)
+
+✔ YAML
+
+✔ Logging
+
+✔ Validation
+
+✔ Incremental Loading
+
+✔ Historical Backfill
+
+✔ UPSERT
+
+✔ Audit
+
+✔ Report
+
+再加：
+
+How to Run
+
+python main.py
+
+python main.py --backfill data/raw/DataAnalyst.csv
+
 ## Database Optimization
 
 Indexes added:

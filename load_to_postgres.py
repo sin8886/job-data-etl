@@ -140,8 +140,7 @@ def main(
 
             if existing_jobs > 0 or existing_companies > 0:
                 logger.info(
-                    "Existing data detected: jobs=%d companies=%d. "
-                    "Incremental Load enabled, only new business records will be processed.",
+                    "Existing data detected: jobs=%d companies=%d. ",
                     existing_jobs,
                     existing_companies,
                 )

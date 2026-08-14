@@ -158,6 +158,27 @@ passed = True
 
 ---
 
+## Reliability Features
+
+This ETL pipeline includes several production-oriented reliability features:
+
+- Incremental loading to avoid reprocessing existing records.
+- Idempotent database loading using PostgreSQL UPSERT.
+- Automatic retry with exponential backoff for transient failures.
+- Pipeline audit logging for each execution.
+- Failure localization (`failed_step`) and error recording (`error_message`).
+- Pipeline recovery by rerunning failed executions.
+
+### Retry Strategy
+
+The Load stage supports automatic retry.
+
+- Maximum attempts: 4
+- Exponential backoff
+- Delay sequence: 2s → 4s → 8s
+
+This improves pipeline reliability against temporary failures such as database connection issues.
+
 # 3. 自动化测试
 
 使用 Pytest 对核心函数进行测试：

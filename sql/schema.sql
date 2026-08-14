@@ -2,7 +2,11 @@
 -- Schema for ETL Project
 -- =========================================
 
+
+-- =========================================
 -- Companies table
+-- =========================================
+
 CREATE TABLE IF NOT EXISTS public.companies
 (
     id integer NOT NULL DEFAULT nextval('companies_id_seq'::regclass),
@@ -20,7 +24,10 @@ CREATE TABLE IF NOT EXISTS public.companies
 );
 
 
+-- =========================================
 -- Jobs table
+-- =========================================
+
 CREATE TABLE IF NOT EXISTS public.jobs
 (
     id integer NOT NULL DEFAULT nextval('jobs_id_seq'::regclass),
@@ -43,14 +50,27 @@ CREATE TABLE IF NOT EXISTS public.jobs
 );
 
 
+-- =========================================
 -- Pipeline audit table
+-- =========================================
+
 CREATE TABLE IF NOT EXISTS public.pipeline_runs
 (
     run_id integer NOT NULL DEFAULT nextval('pipeline_runs_run_id_seq'::regclass),
+
     started_at timestamp NOT NULL,
+
     finished_at timestamp,
+
     row_count integer,
+
     status varchar(20),
+
+    run_type varchar(20),
+
+    failed_step varchar(50),
+
+    error_message text,
 
     CONSTRAINT pipeline_runs_pkey PRIMARY KEY (run_id)
 );

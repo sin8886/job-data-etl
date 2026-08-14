@@ -60,7 +60,13 @@ def create_run(run_type="incremental"):
     return run_id
 
 
-def update_run(run_id, row_count, status):
+def update_run(
+    run_id,
+    row_count,
+    status,
+    failed_step=None,
+    error_message=None,
+):
 
     conn = psycopg2.connect(**get_db_config())
 
@@ -72,13 +78,17 @@ def update_run(run_id, row_count, status):
         SET
             finished_at=%s,
             row_count=%s,
-            status=%s
+            status=%s,
+            failed_step=%s,
+            error_message=%s
         WHERE run_id=%s;
         """,
         (
             datetime.now(),
             row_count,
             status,
+            failed_step,
+            error_message,
             run_id,
         ),
     )

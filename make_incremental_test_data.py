@@ -22,7 +22,7 @@ new_row = df.iloc[-1].copy()
 # 至少修改其中一个字段，
 # Incremental Filter 才会认为这是新数据。
 
-new_row["Job Title"] = "Senior Data Analyst (Incremental Test)"
+new_row["Job Title"] = "Senior Data Analyst (Day18 Retry Failure Test)"
 
 # 如果想测试其它情况，也可以改下面这些字段
 # new_row["Company Name"] = "OpenAI"

@@ -86,7 +86,9 @@ def clean_company_names(df, config=None):
     split_index = company_config.get("split_index", 0)
     for col in _ensure_list(company_config.get("columns", ["Company Name"])):
         if col in result.columns:
-            result[col] = result[col].str.split(split_on).str[split_index]
+            result[col] = (
+                result[col].str.split(split_on).str[split_index].str.strip()
+            )
     return result
 
 

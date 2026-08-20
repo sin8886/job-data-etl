@@ -93,3 +93,21 @@ def test_filter_existing_records_normalizes_case_and_whitespace(monkeypatch):
     result = incremental.filter_existing_records(df)
 
     assert result.empty
+
+
+def test_filter_existing_records_uses_case_insensitive_company_identity(monkeypatch):
+    mock_existing_keys(
+        monkeypatch,
+        [("taskrabbit", "Senior Data Analyst", "San Francisco, CA")],
+    )
+    df = pd.DataFrame(
+        {
+            "Company Name": ["TaskRabbit"],
+            "Job Title": ["Senior Data Analyst"],
+            "Location": ["San Francisco, CA"],
+        }
+    )
+
+    result = incremental.filter_existing_records(df)
+
+    assert result.empty

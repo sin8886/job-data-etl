@@ -1,8 +1,12 @@
 -- =========================================
 -- Constraints
 -- =========================================
--- All primary keys, unique constraints and
--- foreign keys are defined directly in schema.sql.
+-- Primary keys, the jobs foreign key, and NOT NULL constraints
+-- are defined directly in schema.sql.
+--
+-- Company-name uniqueness is enforced by the functional unique index
+-- companies_name_ci_unique in schema.sql. It compares lower(btrim(name)),
+-- so "Taskrabbit" and "TaskRabbit" cannot both be inserted.
 --
 -- This file is reserved for future ALTER TABLE
 -- statements if additional constraints are needed.

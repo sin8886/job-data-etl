@@ -66,6 +66,33 @@ def get_companies_count():
     return count
 
 
+def get_case_insensitive_duplicate_company_groups():
+    """Count duplicate companies using the database identity rule."""
+    conn = psycopg2.connect(
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        port=DB_PORT,
+    )
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM (
+            SELECT lower(btrim(name))
+            FROM companies
+            GROUP BY lower(btrim(name))
+            HAVING COUNT(*) > 1
+        ) duplicate_groups;
+        """
+    )
+    count = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return count
+
+
 def test_idempotent_load():
     """
     测试 ETL 重复运行不会产生重复数据
@@ -104,3 +131,4 @@ def test_idempotent_load():
     # 核心幂等验证
     assert jobs_first == jobs_second
     assert companies_first == companies_second
+    assert get_case_insensitive_duplicate_company_groups() == 0

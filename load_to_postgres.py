@@ -130,7 +130,6 @@ def main(
             db_user,
         )
 
-        # 提醒：重复运行会插入重复 jobs（目前未做幂等/upsert）
         try:
             cur.execute("SELECT COUNT(*) FROM jobs;")
             existing_jobs = int(cur.fetchone()[0])
@@ -149,8 +148,7 @@ def main(
             logger.debug("无法读取现有行数（忽略）", exc_info=True)
         logger.info("开始同步数据到 PostgreSQL...")
 
-        companies_inserted = 0
-        companies_existing = 0
+        companies_processed = 0
         jobs_inserted = 0
         rows_skipped = 0
 
@@ -170,38 +168,38 @@ def main(
 
                 company_name = str(company_name).strip()
 
-                # 先查公司是否存在
+                # Use the database's case-insensitive company identity rule.
+                # This is intentionally an UPSERT rather than a SELECT followed
+                # by INSERT, so concurrent loads cannot create case-only duplicates.
                 cur.execute(
-                    "SELECT id FROM companies WHERE name = %s LIMIT 1;",
-                    (company_name,),
+                    """
+                    INSERT INTO companies
+                    (name, industry, sector, rating, revenue, headquarters, size, founded)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT ((lower(btrim(name))))
+                    DO UPDATE SET
+                        industry = COALESCE(EXCLUDED.industry, companies.industry),
+                        sector = COALESCE(EXCLUDED.sector, companies.sector),
+                        rating = COALESCE(EXCLUDED.rating, companies.rating),
+                        revenue = COALESCE(EXCLUDED.revenue, companies.revenue),
+                        headquarters = COALESCE(EXCLUDED.headquarters, companies.headquarters),
+                        size = COALESCE(EXCLUDED.size, companies.size),
+                        founded = COALESCE(EXCLUDED.founded, companies.founded)
+                    RETURNING id;
+                    """,
+                    (
+                        company_name,
+                        row["Industry"],
+                        row["Sector"],
+                        row["Rating"],
+                        row["Revenue"],
+                        row["Headquarters"],
+                        row["Size"],
+                        row["Founded"],
+                    ),
                 )
-
-                result = cur.fetchone()
-
-                if result:
-                    company_id = result[0]
-                    companies_existing += 1
-                else:
-                    cur.execute(
-                        """
-                        INSERT INTO companies (name, industry, sector, rating, revenue, headquarters, size, founded)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                        RETURNING id;
-                        """,
-                        (
-                            company_name,
-                            row["Industry"],
-                            row["Sector"],
-                            row["Rating"],
-                            row["Revenue"],
-                            row["Headquarters"],
-                            row["Size"],
-                            row["Founded"],
-                        ),
-                    )
-
-                    company_id = cur.fetchone()[0]
-                    companies_inserted += 1
+                company_id = cur.fetchone()[0]
+                companies_processed += 1
 
                 # ========= Step B：插入 jobs =========
 
@@ -247,9 +245,8 @@ def main(
         conn.commit()
         elapsed = time.perf_counter() - start
         logger.info(
-            "ETL 导入成功: companies_inserted=%d companies_existing=%d jobs_inserted=%d rows_skipped=%d elapsed=%.2fs",
-            companies_inserted,
-            companies_existing,
+            "ETL 导入成功: companies_processed=%d jobs_processed=%d rows_skipped=%d elapsed=%.2fs",
+            companies_processed,
             jobs_inserted,
             rows_skipped,
             elapsed,

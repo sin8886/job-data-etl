@@ -45,3 +45,11 @@ def test_clean_company_names():
     assert result.loc[0, "Company Name"] == "Google"
     assert result.loc[1, "Company Name"] == "Microsoft"
     assert result.loc[2, "Company Name"] == "Apple"
+
+
+def test_clean_company_names_removes_surrounding_whitespace():
+    df = pd.DataFrame({"Company Name": ["  TaskRabbit  "]})
+
+    result = clean_company_names(df)
+
+    assert result.loc[0, "Company Name"] == "TaskRabbit"

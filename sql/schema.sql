@@ -19,9 +19,13 @@ CREATE TABLE IF NOT EXISTS public.companies
     size text,
     founded text,
 
-    CONSTRAINT companies_pkey PRIMARY KEY (id),
-    CONSTRAINT companies_name_unique UNIQUE (name)
+    CONSTRAINT companies_pkey PRIMARY KEY (id)
 );
+
+-- Company identity is case-insensitive and ignores leading/trailing spaces.
+-- A functional unique index is required because UNIQUE(name) is case-sensitive.
+CREATE UNIQUE INDEX IF NOT EXISTS companies_name_ci_unique
+ON public.companies ((lower(btrim(name))));
 
 
 -- =========================================
@@ -32,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.jobs
 (
     id integer NOT NULL DEFAULT nextval('jobs_id_seq'::regclass),
     title text NOT NULL,
-    company_id integer,
+    company_id integer NOT NULL,
     location text,
     salary_estimate text,
     easy_apply text,

@@ -325,8 +325,29 @@ load_to_postgres.py
 包含：
 
 - 数据库连接
-- 表创建
 - 数据插入
+- 公司与职位 UPSERT
+
+### Day 20：表关系与去重规则
+
+数据库保留三张表：
+
+- `companies`：一行代表一家公司，`id` 是主键。
+- `jobs`：一行代表一条职位记录，`id` 是主键，`company_id` 是必填外键，指向 `companies.id`。
+- `pipeline_runs`：一行代表一次 Pipeline 运行。
+
+公司与职位是一对多关系：一个公司可对应多条职位，每条职位必须属于一个公司。
+
+公司名称使用 `lower(btrim(name))` 作为数据库层的唯一识别规则，因此
+`Taskrabbit` 与 `TaskRabbit` 不能作为两家公司重复插入。加载器也使用该规则进行公司 UPSERT。
+
+职位当前继续使用 `(company_id, title, location)` 作为业务去重键；该规则与增量过滤和职位 UPSERT 一致。
+
+对已有数据库执行 Day 20 变更时，请运行：
+
+```powershell
+psql -d job_db -f sql/migrations/20260820_day20_company_identity.sql
+```
 
 ---
 
@@ -523,15 +544,13 @@ Quality Checks:
 
 ---
 
-## 数据库重复问题
+## 数据库去重与幂等
 
-当前 PostgreSQL 加载采用追加模式。
+PostgreSQL 使用数据库约束和 UPSERT 保证幂等加载：
 
-后续优化：
-
-- 添加唯一键
-- 使用 UPSERT
-- 实现幂等 ETL
+- 公司：`lower(btrim(name))` 的唯一索引防止大小写或首尾空格造成的重复公司。
+- 职位：`(company_id, title, location)` 唯一约束防止当前项目定义下的重复职位。
+- 加载器对公司和职位都执行 UPSERT；重复运行不会新增相同业务键的数据。
 
 ---
 

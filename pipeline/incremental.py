@@ -14,6 +14,11 @@ from load_to_postgres import (
 logger = logging.getLogger(__name__)
 
 
+def _normalize_key_part(value) -> str:
+    """Apply the same case/whitespace rule used by the database company index."""
+    return str(value).strip().lower()
+
+
 def filter_existing_records(df: pd.DataFrame) -> pd.DataFrame:
     """
     Incremental Load
@@ -38,9 +43,9 @@ def filter_existing_records(df: pd.DataFrame) -> pd.DataFrame:
     # 一次性读取数据库所有业务键
     cur.execute("""
         SELECT
-            c.name,
-            j.title,
-            j.location
+            lower(btrim(c.name)),
+            lower(btrim(j.title)),
+            lower(btrim(j.location))
         FROM jobs j
         JOIN companies c
             ON c.id = j.company_id;
@@ -48,9 +53,9 @@ def filter_existing_records(df: pd.DataFrame) -> pd.DataFrame:
 
     existing_keys = {
         (
-            str(row[0]).strip().lower(),
-            str(row[1]).strip().lower(),
-            str(row[2]).strip().lower(),
+            _normalize_key_part(row[0]),
+            _normalize_key_part(row[1]),
+            _normalize_key_part(row[2]),
         )
         for row in cur.fetchall()
     }
@@ -67,9 +72,9 @@ def filter_existing_records(df: pd.DataFrame) -> pd.DataFrame:
     new_df = df[
         ~df.apply(
             lambda row: (
-                str(row["Company Name"]).strip().lower(),
-                str(row["Job Title"]).strip().lower(),
-                str(row["Location"]).strip().lower(),
+                _normalize_key_part(row["Company Name"]),
+                _normalize_key_part(row["Job Title"]),
+                _normalize_key_part(row["Location"]),
             )
             in existing_keys,
             axis=1,

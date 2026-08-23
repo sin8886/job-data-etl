@@ -1,8 +1,8 @@
 # 数据清洗配置文件
 
 # 输入输出路径
-input_path: D:\桌面\DE\data\raw\DataAnalyst.csv
-output_path: D:\桌面\DE\data\clean\jobs_clean.csv
+input_path: data/raw/DataAnalyst.csv
+output_path: data/clean/jobs_clean.csv
 
 # 无效值替换（将指定值替换为 null）
 replace_invalid_values:

@@ -56,7 +56,7 @@ jobs:
             -p "$DB_PORT" \
             -U "$DB_USER" \
             -d "$DB_NAME" \
-            -f schema.sql
+            -f sql/schema.sql
 
       - name: Run Ruff
         run: ruff check .

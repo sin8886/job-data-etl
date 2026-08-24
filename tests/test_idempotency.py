@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import psycopg2
 from dotenv import load_dotenv
@@ -15,7 +16,8 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 
-CSV_PATH = r"D:\桌面\DE\data\clean\jobs_clean.csv"
+BASE_DIR = Path(__file__).resolve().parents[1]
+CSV_PATH = str(BASE_DIR / "data" / "clean" / "jobs_clean.csv")
 
 
 def get_jobs_count():
@@ -29,16 +31,11 @@ def get_jobs_count():
         host=DB_HOST,
         port=DB_PORT,
     )
-
     cur = conn.cursor()
-
     cur.execute("SELECT COUNT(*) FROM jobs;")
-
     count = cur.fetchone()[0]
-
     cur.close()
     conn.close()
-
     return count
 
 
@@ -53,16 +50,11 @@ def get_companies_count():
         host=DB_HOST,
         port=DB_PORT,
     )
-
     cur = conn.cursor()
-
     cur.execute("SELECT COUNT(*) FROM companies;")
-
     count = cur.fetchone()[0]
-
     cur.close()
     conn.close()
-
     return count
 
 
@@ -76,8 +68,7 @@ def get_case_insensitive_duplicate_company_groups():
         port=DB_PORT,
     )
     cur = conn.cursor()
-    cur.execute(
-        """
+    cur.execute("""
         SELECT COUNT(*)
         FROM (
             SELECT lower(btrim(name))
@@ -85,8 +76,7 @@ def get_case_insensitive_duplicate_company_groups():
             GROUP BY lower(btrim(name))
             HAVING COUNT(*) > 1
         ) duplicate_groups;
-        """
-    )
+        """)
     count = cur.fetchone()[0]
     cur.close()
     conn.close()
@@ -97,7 +87,6 @@ def test_idempotent_load():
     """
     测试 ETL 重复运行不会产生重复数据
     """
-
     # 第一次运行 ETL
     result1 = main(
         csv_path=CSV_PATH,
@@ -107,7 +96,6 @@ def test_idempotent_load():
         db_host=DB_HOST,
         db_port=DB_PORT,
     )
-
     assert result1 == 0
 
     jobs_first = get_jobs_count()
@@ -122,7 +110,6 @@ def test_idempotent_load():
         db_host=DB_HOST,
         db_port=DB_PORT,
     )
-
     assert result2 == 0
 
     jobs_second = get_jobs_count()

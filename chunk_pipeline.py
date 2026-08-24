@@ -5,11 +5,11 @@ import pandas as pd
 
 from clean import (
     CLEAN_CONFIG,
-    drop_configured_columns,
-    replace_invalid_values,
     clean_company_names,
     clean_salary_estimates,
+    drop_configured_columns,
     remove_duplicates,
+    replace_invalid_values,
 )
 
 logging.basicConfig(

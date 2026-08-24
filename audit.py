@@ -1,12 +1,13 @@
+from datetime import datetime, timezone
+
 import psycopg2
-from datetime import datetime
 
 from load_to_postgres import (
-    DB_NAME,
-    DB_USER,
-    DB_PASSWORD,
     DB_HOST,
+    DB_NAME,
+    DB_PASSWORD,
     DB_PORT,
+    DB_USER,
 )
 
 
@@ -44,7 +45,7 @@ def create_run(run_type="incremental"):
         RETURNING run_id;
         """,
         (
-            datetime.now(),
+            datetime.now(timezone.utc),
             "RUNNING",
             run_type,
         ),
@@ -84,7 +85,7 @@ def update_run(
         WHERE run_id=%s;
         """,
         (
-            datetime.now(),
+            datetime.now(timezone.utc),
             row_count,
             status,
             failed_step,

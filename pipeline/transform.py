@@ -1,4 +1,4 @@
-from clean import run_pipeline, DEFAULT_OUTPUT
+from clean import DEFAULT_OUTPUT, run_pipeline
 
 
 def transform(input_path):

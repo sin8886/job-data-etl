@@ -1,6 +1,6 @@
 import pandas as pd
 
-from clean import replace_invalid_values, clean_company_names
+from clean import clean_company_names, replace_invalid_values
 
 
 def test_replace_invalid_values():

@@ -257,8 +257,12 @@ def main(
         if conn is not None:
             try:
                 conn.rollback()
-            except Exception:
-                pass
+            except Exception as rollback_error:
+                logger.warning(
+                    "数据库事务回滚失败: %s",
+                    rollback_error,
+                )
+
         logger.error("数据库连接/初始化失败: err=%s", e)
         return 3
     finally:

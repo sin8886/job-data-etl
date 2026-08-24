@@ -1,6 +1,3 @@
-import pandas as pd
-
-
 def check_row_count(df, min_rows=1):
     """
     检查数据行数
@@ -33,9 +30,8 @@ def check_null_rate(df, threshold=0.2):
     failed_columns = []
 
     for column in critical_columns:
-        if column in null_rate:
-            if null_rate[column] > threshold:
-                failed_columns.append(column)
+        if column in null_rate and null_rate[column] > threshold:
+            failed_columns.append(column)
 
     result = {
         "check": "null_rate",

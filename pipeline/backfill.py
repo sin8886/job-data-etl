@@ -1,7 +1,7 @@
-from pipeline.transform import transform
-from pipeline.validate import validate
 from pipeline.load import load
 from pipeline.report import generate_report
+from pipeline.transform import transform
+from pipeline.validate import validate
 
 
 def run_backfill(input_path):

@@ -1,6 +1,6 @@
-import pandas as pd
+
 import matplotlib.pyplot as plt
-from pathlib import Path
+import pandas as pd
 
 INPUT_FILE = r"D:\桌面\DE\data\clean\jobs_chunk_clean.csv"
 

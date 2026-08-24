@@ -1,11 +1,6 @@
 import pandas as pd
 
-from quality import (
-    check_row_count,
-    check_null_rate,
-    check_unique
-)
-
+from quality import check_null_rate, check_row_count, check_unique
 
 
 def test_row_count():

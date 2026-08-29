@@ -1,14 +1,17 @@
 import argparse
 import logging
 import os
+from pathlib import Path
 
 from audit import create_run, update_run
+from clean import DEFAULT_OUTPUT
 from pipeline.backfill import run_backfill
 from pipeline.extract import extract
 from pipeline.incremental import filter_existing_records
 from pipeline.load import load
 from pipeline.report import generate_report
 from pipeline.retry import retry
+from pipeline.storage.s3 import upload_file
 from pipeline.transform import transform
 from pipeline.validate import validate
 
@@ -97,6 +100,13 @@ def main():
 
         raw_path = extract(args.input)
 
+        raw_s3_key = f"raw/{Path(raw_path).name}"
+
+        upload_file(
+            raw_path,
+            raw_s3_key,
+        )
+
         logger.info("Extract Finished")
 
         # ------------------------------------------
@@ -108,6 +118,13 @@ def main():
         logger.info("Step: %s", current_step)
 
         df = transform(raw_path)
+
+        clean_s3_key = f"clean/{Path(DEFAULT_OUTPUT).name}"
+
+        upload_file(
+            DEFAULT_OUTPUT,
+            clean_s3_key,
+        )
 
         logger.info("Transform Finished")
 

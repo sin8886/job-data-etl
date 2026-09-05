@@ -2,40 +2,39 @@ from pathlib import Path
 
 import pandas as pd
 
-# 项目根目录
+# Project root directory.
 BASE_DIR = Path(__file__).parent
 
 SOURCE_FILE = BASE_DIR / "data" / "raw" / "DataAnalyst.csv"
 OUTPUT_FILE = BASE_DIR / "data" / "raw" / "DataAnalyst_test.csv"
 
-# 读取原始数据
+# Read the raw data.
 df = pd.read_csv(SOURCE_FILE)
 
 print(f"Original rows: {len(df)}")
 
-# 复制最后一条记录
+# Copy the last record.
 new_row = df.iloc[-1].copy()
 
-# ========= 修改业务键 =========
+# ========= Modify the business key =========
 # Business Key:
 # Company Name + Job Title + Location
 #
-# 至少修改其中一个字段，
-# Incremental Filter 才会认为这是新数据。
+# Change at least one field so the incremental filter treats the row as new.
 
 new_row["Job Title"] = "Senior Data Analyst (Day18 Retry Failure Test)"
 
-# 如果想测试其它情况，也可以改下面这些字段
+# Modify the following fields to test other scenarios.
 # new_row["Company Name"] = "OpenAI"
 # new_row["Location"] = "Auckland"
 
-# 添加到最后
+# Append the new record.
 df = pd.concat(
     [df, pd.DataFrame([new_row])],
     ignore_index=True,
 )
 
-# 保存测试文件
+# Save the test input file.
 df.to_csv(OUTPUT_FILE, index=False)
 
 print(f"New rows: {len(df)}")

@@ -20,18 +20,18 @@ CONFIG_FILE = BASE_DIR / "clean_config.yaml"
 
 
 def load_config(config_path=None):
-    """加载YAML配置，支持环境变量覆盖"""
+    """Load YAML configuration with optional environment variable overrides."""
     config_file = config_path or os.getenv("ETL_CLEAN_CONFIG_FILE") or CONFIG_FILE
     config_file = Path(config_file)
 
     if not config_file.exists():
-        logger.warning(f"配置文件不存在: {config_file}，使用默认值")
+        logger.warning(f"Configuration file not found: {config_file}; using defaults")
         return {}
 
     with open(config_file, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
 
-    logger.info(f"已加载配置: {config_file}")
+    logger.info(f"Configuration loaded: {config_file}")
     return config
 
 
@@ -43,7 +43,7 @@ DEFAULT_OUTPUT = CLEAN_CONFIG.get(
 
 
 def load_data(file_path, config=None):
-    """加载原始数据。"""
+    """Load raw data from a CSV file."""
     return pd.read_csv(file_path)
 
 
@@ -56,7 +56,7 @@ def _ensure_list(value):
 
 
 def drop_configured_columns(df, config=None):
-    """删除配置文件里指定的列。"""
+    """Drop columns configured in the YAML file."""
     cfg = config or CLEAN_CONFIG
     drop_cols = _ensure_list(cfg.get("drop_columns", ["Unnamed: 0"]))
     if not drop_cols:
@@ -65,7 +65,7 @@ def drop_configured_columns(df, config=None):
 
 
 def replace_invalid_values(df, config=None):
-    """把无效值统一替换成空值。"""
+    """Replace configured invalid values with null values."""
     cfg = config or CLEAN_CONFIG
     invalid_values = cfg.get("replace_invalid_values", {-1: None})
     result = df.copy()
@@ -75,7 +75,7 @@ def replace_invalid_values(df, config=None):
 
 
 def clean_company_names(df, config=None):
-    """清洗公司名字段。"""
+    """Clean configured company name fields."""
     cfg = config or CLEAN_CONFIG
     company_config = cfg.get("company_name", {})
     if not company_config.get("enabled", True):
@@ -86,14 +86,12 @@ def clean_company_names(df, config=None):
     split_index = company_config.get("split_index", 0)
     for col in _ensure_list(company_config.get("columns", ["Company Name"])):
         if col in result.columns:
-            result[col] = (
-                result[col].str.split(split_on).str[split_index].str.strip()
-            )
+            result[col] = result[col].str.split(split_on).str[split_index].str.strip()
     return result
 
 
 def clean_salary_estimates(df, config=None):
-    """清洗薪资估算字段。"""
+    """Clean configured salary estimate fields."""
     cfg = config or CLEAN_CONFIG
     salary_config = cfg.get("salary_estimate", {})
     if not salary_config.get("enabled", True):
@@ -111,7 +109,7 @@ def clean_salary_estimates(df, config=None):
 
 
 def clean_company_and_salary(df, config=None):
-    """兼容旧调用：按顺序执行公司名和薪资清洗。"""
+    """Preserve compatibility by cleaning company names and salaries in order."""
     result = replace_invalid_values(df, config)
     result = clean_company_names(result, config)
     result = clean_salary_estimates(result, config)
@@ -119,7 +117,7 @@ def clean_company_and_salary(df, config=None):
 
 
 def remove_duplicates(df, config=None):
-    """去重。"""
+    """Remove duplicate records when enabled in the configuration."""
     cfg = config or CLEAN_CONFIG
     dedup_config = cfg.get("dedup", {})
     if dedup_config.get("enabled", True):
@@ -128,14 +126,14 @@ def remove_duplicates(df, config=None):
 
 
 def save_data(df, output_path):
-    """保存清洗后的结果。"""
+    """Save the cleaned data to a CSV file."""
     df.to_csv(output_path, index=False)
 
 
 def _log_missing_rates(df, columns, warn_threshold=0.30):
     total = len(df)
     if total == 0:
-        logger.warning("清洗后数据为空：rows=0")
+        logger.warning("Cleaned data is empty: rows=0")
         return
 
     summary_parts = []
@@ -143,7 +141,7 @@ def _log_missing_rates(df, columns, warn_threshold=0.30):
 
     for col in columns:
         if col not in df.columns:
-            logger.warning("缺少列（无法统计缺失率）：%s", col)
+            logger.warning("Missing column; cannot calculate null rate: %s", col)
             continue
 
         missing = int(df[col].isna().sum())
@@ -153,27 +151,29 @@ def _log_missing_rates(df, columns, warn_threshold=0.30):
             warning_parts.append(f"{col}({rate:.1%})")
 
     if summary_parts:
-        logger.info("关键列缺失率: %s", "; ".join(summary_parts))
+        logger.info("Critical-column null rates: %s", "; ".join(summary_parts))
     if warning_parts:
         logger.warning(
-            "高缺失列(>=%.0f%%): %s", warn_threshold * 100, ", ".join(warning_parts)
+            "Columns with high null rates (>=%.0f%%): %s",
+            warn_threshold * 100,
+            ", ".join(warning_parts),
         )
 
 
 def run_pipeline(input_path, output_path, config=None):
-    """主执行逻辑：把每一步小函数串起来。"""
+    """Run the main data-cleaning pipeline."""
     cfg = config or CLEAN_CONFIG
     start = time.perf_counter()
-    logger.info("开始清洗: input=%s", input_path)
+    logger.info("Cleaning started: input=%s", input_path)
 
     try:
-        # 1. 加载
+        # 1. Load
         df = load_data(input_path, cfg)
         df = drop_configured_columns(df, cfg)
         raw_rows = len(df)
-        logger.info("读取成功: rows=%d cols=%d", raw_rows, len(df.columns))
+        logger.info("Read successfully: rows=%d cols=%d", raw_rows, len(df.columns))
 
-        # 2. 清洗
+        # 2. Clean
         df = replace_invalid_values(df, cfg)
         df = clean_company_names(df, cfg)
         df = clean_salary_estimates(df, cfg)
@@ -181,14 +181,14 @@ def run_pipeline(input_path, output_path, config=None):
         df = remove_duplicates(df, cfg)
         after_dedup = len(df)
         logger.info(
-            "去重完成: before=%d after=%d removed=%d",
+            "Deduplication completed: before=%d after=%d removed=%d",
             before_dedup,
             after_dedup,
             before_dedup - after_dedup,
         )
-        # 生成唯一职位ID
+        # Generate a unique job ID.
         df.insert(0, "job_id", range(1, len(df) + 1))
-        # 3. 缺失率（关键列）
+        # 3. Calculate null rates for critical columns.
         missing_config = cfg.get("missing_rate", {})
         _log_missing_rates(
             df,
@@ -205,16 +205,16 @@ def run_pipeline(input_path, output_path, config=None):
             warn_threshold=missing_config.get("warn_threshold", 0.30),
         )
 
-        # 4. 保存
+        # 4. Save
         save_data(df, output_path)
-        logger.info("写入完成: output=%s", output_path)
+        logger.info("Write completed: output=%s", output_path)
 
         elapsed = time.perf_counter() - start
-        logger.info("清洗完成: final_rows=%d elapsed=%.2fs", len(df), elapsed)
+        logger.info("Cleaning completed: final_rows=%d elapsed=%.2fs", len(df), elapsed)
         return df
 
     except Exception:
-        logger.exception("清洗流程失败")
+        logger.exception("Cleaning pipeline failed")
         raise
 
 

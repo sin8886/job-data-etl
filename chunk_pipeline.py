@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 
 def load_data_chunk(file_path, chunksize=100000):
     """
-    分块读取CSV
+    Read the CSV in chunks.
     """
     return pd.read_csv(file_path, chunksize=chunksize)
 
 
 def save_chunk(df, output_path, first_chunk):
     """
-    追加写入临时文件
+    Append data to a temporary file.
     """
 
     df.to_csv(
@@ -42,7 +42,7 @@ def save_chunk(df, output_path, first_chunk):
 
 def process_chunk(chunk, config):
     """
-    单个chunk清洗
+    Clean one chunk.
     """
 
     chunk = drop_configured_columns(chunk, config)
@@ -58,8 +58,7 @@ def process_chunk(chunk, config):
 
 def run_chunk_clean(input_path, temp_path, chunksize=100000, config=None):
     """
-    第一阶段：
-    chunk读取 + 清洗 + 写临时文件
+    Stage 1: read, clean, and write chunks to a temporary file.
     """
 
     cfg = config or CLEAN_CONFIG
@@ -73,11 +72,11 @@ def run_chunk_clean(input_path, temp_path, chunksize=100000, config=None):
 
         total_input += len(chunk)
 
-        logger.info("处理chunk: rows=%d", len(chunk))
+        logger.info("Processing chunk: rows=%d", len(chunk))
 
         chunk = process_chunk(chunk, cfg)
 
-        # chunk内部简单去重
+        # Remove duplicates within the chunk.
         chunk = remove_duplicates(chunk, cfg)
 
         total_output += len(chunk)
@@ -86,29 +85,30 @@ def run_chunk_clean(input_path, temp_path, chunksize=100000, config=None):
 
         first_chunk = False
 
-    logger.info("Chunk清洗完成: input=%d output=%d", total_input, total_output)
+    logger.info(
+        "Chunk cleaning completed: input=%d output=%d", total_input, total_output
+    )
 
 
 def global_deduplicate(input_path, output_path):
     """
-    第二阶段：
-    全局去重
+    Stage 2: deduplicate the complete intermediate file.
     """
 
-    logger.info("开始全局去重")
+    logger.info("Starting global deduplication")
 
     df = pd.read_csv(input_path)
 
     before = len(df)
 
-    # 业务唯一键
+    # Business key.
     unique_columns = [
         "Company Name",
         "Job Title",
         "Location",
     ]
 
-    # 如果字段存在，按业务字段去重
+    # Use the business key when all fields are available.
     existing_columns = [col for col in unique_columns if col in df.columns]
 
     if existing_columns:
@@ -122,10 +122,13 @@ def global_deduplicate(input_path, output_path):
     after = len(df)
 
     logger.info(
-        "Global dedup完成: before=%d after=%d removed=%d", before, after, before - after
+        "Global deduplication completed: before=%d after=%d removed=%d",
+        before,
+        after,
+        before - after,
     )
 
-    # 重新生成job_id
+    # Regenerate job IDs.
 
     if "job_id" in df.columns:
         df = df.drop(columns=["job_id"])
@@ -134,14 +137,14 @@ def global_deduplicate(input_path, output_path):
 
     df.to_csv(output_path, index=False)
 
-    logger.info("最终文件生成: %s", output_path)
+    logger.info("Final file generated: %s", output_path)
 
 
 def run_full_chunk_pipeline(input_path, output_path):
 
     temp_path = output_path + ".temp.csv"
 
-    # 删除旧临时文件
+    # Remove any previous temporary file.
     if os.path.exists(temp_path):
         os.remove(temp_path)
 
@@ -151,7 +154,7 @@ def run_full_chunk_pipeline(input_path, output_path):
     # Stage 2
     global_deduplicate(temp_path, output_path)
 
-    # 删除临时文件
+    # Remove the temporary file.
     if os.path.exists(temp_path):
         os.remove(temp_path)
 

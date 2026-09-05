@@ -1,587 +1,206 @@
-# Job Data ETL
+# Job Data ETL Pipeline
 
-## 项目简介
+A production-oriented Python ETL pipeline for processing job-posting data. The project demonstrates configurable cleaning, data-quality validation, incremental loading, PostgreSQL upserts, S3 archival, audit tracking, retries, Prefect orchestration, Docker-based local infrastructure, and GitHub Actions CI.
 
-一个基于 Python 的招聘数据 ETL Pipeline 项目。
+## What This Project Does
 
-项目实现从原始 CSV 招聘数据读取、清洗、数据质量校验、统计分析、生成报告，并支持将处理后的数据加载到 PostgreSQL。
+The pipeline processes raw CSV job data through the following stages:
 
-项目重点模拟真实 Data Engineer 工作流程：
+1. Extract the configured CSV input.
+2. Clean and normalize fields using `clean_config.yaml`.
+3. Store the cleaned CSV locally and upload raw and cleaned files to S3.
+4. Filter records already present in PostgreSQL using the business key `(company_name, job_title, location)`.
+5. Validate row count, critical-column null rates, and `job_id` uniqueness.
+6. Load companies and jobs with PostgreSQL UPSERT statements.
+7. Retry transient load failures with exponential backoff.
+8. Generate a run report and record pipeline status in `pipeline_runs`.
 
-- 数据抽取（Extract）
-- 数据清洗转换（Transform）
-- 数据质量检查（Data Quality Validation）
-- 数据加载（Load）
-- 自动化测试
-- 可复现 Pipeline 执行
+Historical backfills use the same transform, validation, load, and reporting components while skipping the incremental pre-filter.
 
----
-
-# 技术栈
+## Technology Stack
 
 - Python 3.11
-- Pandas
-- Typer（CLI）
-- PostgreSQL
-- Pytest
-- YAML Configuration
-- Git / GitHub
+- pandas
+- PostgreSQL and psycopg2
+- PyYAML configuration
+- Typer CLI commands
+- boto3 and Amazon S3
+- Prefect scheduling and flow execution
+- Docker and Docker Compose
+- pytest and Ruff
+- GitHub Actions
 
----
-
-# 项目结构
+## Project Structure
 
 ```text
 DE/
-│
-├── data/
-│   ├── raw/
-│   │   └── DataAnalyst.csv          # 原始招聘数据
-│   │
-│   └── clean/
-│       └── jobs_clean.csv            # 清洗后数据
-│
-├── artifacts/
-│   └── {timestamp}/                 # Top 分析报告输出
-│
-├── tests/
-│   ├── test_clean.py                # 清洗函数测试
-│   └── test_quality.py              # 数据质量测试
-│
-├── clean.py                         # 数据清洗模块
-├── quality.py                       # 数据质量检查模块
-├── pipeline.py                      # ETL Pipeline 主入口
-├── load_to_postgres.py              # PostgreSQL 加载模块
-├── clean_config.yaml                # 清洗规则配置
-├── analysis.sql                     # SQL 分析脚本
-├── report.md                        # Pipeline 报告
-└── README.md
+├── main.py                         # Incremental and backfill pipeline entry point
+├── etl_flow.py                     # Prefect flow and daily schedule
+├── clean.py                        # Configurable CSV cleaning pipeline
+├── clean_config.yaml               # Cleaning rules and paths
+├── quality.py                      # Data-quality checks
+├── audit.py                        # Pipeline-run audit persistence
+├── load_to_postgres.py             # PostgreSQL loading and UPSERT logic
+├── exceptions.py                   # Pipeline-specific exceptions
+├── pipeline/
+│   ├── extract.py                  # Input path resolution
+│   ├── transform.py                # Cleaning-stage adapter
+│   ├── incremental.py              # Existing business-key filtering
+│   ├── validate.py                 # Validation orchestration
+│   ├── load.py                     # Data-frame to PostgreSQL adapter
+│   ├── retry.py                    # Exponential-backoff retry helper
+│   ├── report.py                   # Run report generation
+│   ├── backfill.py                 # Historical backfill flow
+│   └── storage/s3.py               # S3 client and upload helpers
+├── tests/                          # Unit, integration, retry, S3, and idempotency tests
+├── sql/
+│   ├── schema.sql                  # PostgreSQL schema, constraints, and indexes
+│   ├── migrations/                 # Versioned database migrations
+│   ├── business_queries.sql        # Example analytical queries
+│   ├── analysis.sql                # Query-plan analysis examples
+│   ├── constraints.sql             # Constraint documentation
+│   └── indexes.sql                 # Optional index statements
+├── .github/workflows/ci.yml        # PostgreSQL-backed CI checks
+├── Dockerfile                      # Application image definition
+├── docker-compose.yml               # Local PostgreSQL and application services
+├── requirements.txt                # Python dependencies
+└── pyproject.toml                  # Ruff configuration
 ```
 
----
+The repository also contains optional local helpers for generating test data, processing large CSV files in chunks, and producing a top-companies visualization. These helpers are not part of the default `main.py` execution path.
 
-# 核心功能
+## Configuration
 
-## 1. 配置化数据清洗
+Cleaning behavior is configured in `clean_config.yaml`:
 
-通过 `clean_config.yaml` 管理清洗规则：
+- Input and output CSV paths
+- Columns to drop
+- Invalid-value replacement
+- Company-name normalization
+- Salary-estimate cleanup
+- Duplicate removal
+- Critical-column null-rate monitoring
 
-支持：
+Database, S3, and logging settings are supplied through environment variables. Use a local `.env` file for development, and keep it outside version control.
 
-- 删除无用字段
-- 无效值替换
-- 公司名称清洗
-- 薪资字段清洗
-- 数据去重
-- 缺失率统计
+Common database variables include:
 
-当前清洗规则：
-
-- 删除 `Unnamed: 0`
-- 替换无效值（例如 -1 → null）
-- 清理 Company Name 换行内容
-- 移除 Salary Estimate 中 `(Glassdoor est.)`
-- 删除重复数据
-
----
-
-# 2. Data Quality Check（数据质量检查）
-
-Pipeline 集成自动化数据质量验证模块：
-
-`quality.py`
-
-包含三个检查：
-
-## Row Count Check
-
-检查清洗后的数据是否为空：
-
-```python
-check_row_count(df)
+```text
+DB_NAME=job_db
+DB_USER=postgres
+DB_PASSWORD=your-local-password
+DB_HOST=localhost
+DB_PORT=5432
 ```
 
-示例：
+S3 uploads require:
 
-```
-rows = 2253
-passed = True
-```
-
----
-
-## Null Rate Check
-
-监控关键字段缺失率：
-
-检查字段：
-
-- Job Title
-- Company Name
-- Location
-- Industry
-
-规则：
-
-```
-null rate > 20%
+```text
+AWS_REGION=your-aws-region
+S3_BUCKET_NAME=your-bucket-name
 ```
 
-触发失败。
+AWS credentials should be supplied through the AWS SDK credential chain, an IAM role, or a local AWS profile. Do not commit access keys to the repository.
 
-示例：
+## Run Locally
 
-```
-Company Name : 0.04%
-Location     : 0%
-Industry     : 0%
-```
+### Install dependencies
 
----
-
-## Uniqueness Check
-
-检查唯一字段重复情况：
-
-当前使用：
-
-```
-job_id
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-示例：
-
-```
-duplicates = 0
-passed = True
-```
-
----
-
-## Reliability Features
-
-This ETL pipeline includes several production-oriented reliability features:
-
-- Incremental loading to avoid reprocessing existing records.
-- Idempotent database loading using PostgreSQL UPSERT.
-- Automatic retry with exponential backoff for transient failures.
-- Pipeline audit logging for each execution.
-- Failure localization (`failed_step`) and error recording (`error_message`).
-- Pipeline recovery by rerunning failed executions.
-
-### Retry Strategy
-
-The Load stage supports automatic retry.
-
-- Maximum attempts: 4
-- Exponential backoff
-- Delay sequence: 2s → 4s → 8s
-
-This improves pipeline reliability against temporary failures such as database connection issues.
-
-# 3. 自动化测试
-
-使用 Pytest 对核心函数进行测试：
-
-运行：
+### Run tests
 
 ```bash
 pytest
 ```
 
-测试内容：
+The test suite covers cleaning, quality checks, validation failures, retry behavior, incremental business-key filtering, S3 client behavior, and database idempotency.
 
-- 清洗函数测试
-- 行数检查测试
-- 空值率检查测试
-- 唯一性检查测试
+### Run the incremental pipeline
 
-当前结果：
-
-```
-5 passed
-```
-
----
-
-# 如何运行
-
-## 1. 创建并激活虚拟环境
-
-Windows PowerShell:
-
-```powershell
-cd D:\桌面\DE
-
-.\de_env\Scripts\Activate.ps1
-```
-
----
-
-## 2. 运行测试
+Use the configured input path:
 
 ```bash
-pytest
+python main.py
 ```
 
----
-
-## 3. 运行 ETL Pipeline
-
-仅执行清洗 + 数据质量检查 + 报告：
+Provide a specific CSV input when needed:
 
 ```bash
-python pipeline.py --skip-load
+python main.py --input data/raw/DataAnalyst.csv
 ```
 
-完整流程：
+### Run a historical backfill
 
 ```bash
-python pipeline.py
+python main.py --backfill data/raw/DataAnalyst.csv
 ```
 
-流程包含：
+The `--backfill` mode reuses the existing transform, validation, PostgreSQL load, and report stages without applying the incremental filter first.
 
-```
-读取 CSV
-    ↓
-数据清洗
-    ↓
-Data Quality Check
-    ↓
-保存 Clean CSV
-    ↓
-加载 PostgreSQL
-    ↓
-生成 Report
+## PostgreSQL and Docker Compose
+
+Start the local PostgreSQL and application services with:
+
+```bash
+docker compose up -d
 ```
 
----
+The database service initializes from `sql/schema.sql`, stores data in the `postgres_data` named volume, and exposes the configured host port. The application service waits for PostgreSQL health, loads `.env`, mounts the project directory, and runs `python main.py`.
 
-# 输出结果
+Apply the versioned company-identity migration to an existing database when required:
 
-## Clean Data
-
-```
-data/clean/jobs_clean.csv
-```
-
-清洗后数据：
-
-```
-2253 rows × 16 columns
-```
-
-包含：
-
-- 原始字段
-- job_id 唯一标识
-
----
-
-## Pipeline Report
-
-```
-report.md
-```
-
-包含：
-
-- 数据规模
-- 公司数量
-- Location 分布
-
----
-
-## Quality Check Log
-
-示例：
-
-```
-Quality check passed:
-
-row_count
-null_rate
-uniqueness(job_id)
-```
-
----
-
-# 数据库加载
-
-支持 PostgreSQL 数据加载：
-
-模块：
-
-```
-load_to_postgres.py
-```
-
-数据库配置支持：
-
-- .env 文件
-- 环境变量
-
-包含：
-
-- 数据库连接
-- 数据插入
-- 公司与职位 UPSERT
-
-### Day 20：表关系与去重规则
-
-数据库保留三张表：
-
-- `companies`：一行代表一家公司，`id` 是主键。
-- `jobs`：一行代表一条职位记录，`id` 是主键，`company_id` 是必填外键，指向 `companies.id`。
-- `pipeline_runs`：一行代表一次 Pipeline 运行。
-
-公司与职位是一对多关系：一个公司可对应多条职位，每条职位必须属于一个公司。
-
-公司名称使用 `lower(btrim(name))` 作为数据库层的唯一识别规则，因此
-`Taskrabbit` 与 `TaskRabbit` 不能作为两家公司重复插入。加载器也使用该规则进行公司 UPSERT。
-
-职位当前继续使用 `(company_id, title, location)` 作为业务去重键；该规则与增量过滤和职位 UPSERT 一致。
-
-对已有数据库执行 Day 20 变更时，请运行：
-
-```powershell
+```bash
 psql -d job_db -f sql/migrations/20260820_day20_company_identity.sql
 ```
 
----
+The database enforces company identity with `lower(btrim(name))` and job uniqueness with `(company_id, title, location)`. These constraints support the loader's UPSERT behavior and repeated-run idempotency.
 
-# 项目流程
+## Prefect
 
-```
-Raw CSV
+`etl_flow.py` wraps the main pipeline in a Prefect flow named `job-data-etl`. Running the module serves a daily schedule at 09:00 in the `Asia/Shanghai` timezone:
 
-   ↓
-
-Load Data
-
-   ↓
-
-Clean Data
-(column cleaning,
-invalid value handling,
-deduplication)
-
-   ↓
-
-Generate job_id
-
-   ↓
-
-Data Quality Validation
-
-(row count,
-null rate,
-uniqueness)
-
-   ↓
-
-Save Clean CSV
-
-   ↓
-
-Load PostgreSQL
-
-   ↓
-
-Generate Report
+```bash
+python etl_flow.py
 ```
 
----
+The flow delegates to the existing `main()` entry point and does not introduce a separate business-logic implementation.
 
-Incremental Load
+## S3 Storage
 
-### Incremental Load
+During the incremental pipeline, the raw input is uploaded under `raw/` and the cleaned output is uploaded under `clean/`. The S3 helper validates the bucket and region settings before uploading and reports the destination in the application log.
 
-The pipeline performs incremental loading using a business key:
+## CI
 
-- Company Name
-- Job Title
-- Location
+GitHub Actions runs on pushes and pull requests targeting `main`. The workflow:
 
-Existing records are queried from PostgreSQL first, and only unseen records are loaded into the database.
+1. Starts PostgreSQL 18 as a service.
+2. Installs Python 3.11 and project dependencies.
+3. Initializes `sql/schema.sql`.
+4. Runs `ruff check .`.
+5. Runs `pytest`.
 
-A helper script `make_incremental_test_data.py` is included for generating test data to verify incremental loading.
-Business Key:
+## Outputs
 
-- Company Name
-- Job Title
-- Location
+Typical runtime outputs include:
 
-Pipeline workflow:
+- `data/clean/jobs_clean.csv`
+- `report.md`
+- Application logs under `logs/` or the configured log path
+- S3 objects under `raw/` and `clean/`
+- Audit rows in the PostgreSQL `pipeline_runs` table
 
-Extract
-↓
-Transform
-↓
-Incremental Filter
-↓
-Validate
-↓
-UPSERT
-↓
-Audit
+Generated files, local logs, virtual environments, caches, and environment files should remain uncommitted according to `.gitignore` and `.dockerignore`.
 
-ETL Pipeline
+## Future Improvements
 
-Architecture
+Possible future improvements that do not change the current pipeline contract include:
 
-CSV
-↓
-Extract
-↓
-Transform
-↓
-Validate
-↓
-Incremental / Backfill
-↓
-PostgreSQL
-↓
-Audit
-
-然后下面写：
-
-Features
-
-✔ Config (.env)
-
-✔ YAML
-
-✔ Logging
-
-✔ Validation
-
-✔ Incremental Loading
-
-✔ Historical Backfill
-
-✔ UPSERT
-
-✔ Audit
-
-✔ Report
-
-再加：
-
-How to Run
-
-python main.py
-
-python main.py --backfill data/raw/DataAnalyst.csv
-
-## Database Optimization
-
-Indexes added:
-
-- idx_jobs_company_id
-- idx_jobs_title
-
-Example:
-
-EXPLAIN ANALYZE
-SELECT \*
-FROM jobs
-WHERE company_id = 10;
-
-Execution plan:
-
-Index Scan using idx_jobs_company_id
-
-## Data Visualization
-
-The pipeline also generates visualization reports.
-
-### Top 10 Companies by Job Count
-
-![Top Companies](top10_companies.png)
-
-# 验证结果
-
-当前 Pipeline 运行结果：
-
-```
-Input:
-2253 rows
-
-Output:
-2253 rows
-
-Columns:
-16 columns
-
-Quality Checks:
-
-✓ Row Count Check
-✓ Null Rate Check
-✓ job_id Uniqueness Check
-```
-
-测试结果：
-
-```
-5 passed
-```
-
----
-
-# 难点与优化
-
-## 数据质量设计
-
-真实 ETL 流程中，数据清洗后不能直接进入数据库，需要经过质量校验。
-
-本项目加入：
-
-- 行数检查
-- 缺失率监控
-- 唯一性检查
-
----
-
-## 数据库去重与幂等
-
-PostgreSQL 使用数据库约束和 UPSERT 保证幂等加载：
-
-- 公司：`lower(btrim(name))` 的唯一索引防止大小写或首尾空格造成的重复公司。
-- 职位：`(company_id, title, location)` 唯一约束防止当前项目定义下的重复职位。
-- 加载器对公司和职位都执行 UPSERT；重复运行不会新增相同业务键的数据。
-
----
-
-## 可扩展方向
-
-未来计划：
-
-- 增加 requirements.txt
-- 增加 CI/CD 自动测试
-- 增加更多数据质量指标
-  - 数据范围检查
-  - 异常值检测
-  - 数据漂移检测
-- 从 Job Description 自动抽取 Skills
-
----
-
-# Git Commit History
-
-主要开发阶段：
-
-```
-init:
-ETL pipeline with configurable cleaning
-
-docs:
-add interview-ready README
-
-feat:
-add data quality checks and tests
-
-feat:
-integrate quality validation into pipeline
-```
+- Add broader data-quality checks such as range validation and drift monitoring.
+- Add a dedicated deployment workflow for the target AWS environment.
+- Improve test isolation for database-backed integration tests.
+- Add structured metrics and operational dashboards.

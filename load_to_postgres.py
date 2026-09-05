@@ -49,7 +49,7 @@ def _load_env_file(file_name: str) -> bool:
                 os.environ.setdefault(key, value)
                 loaded += 1
 
-    logger.info("已加载环境变量文件: %s keys=%d", file_path, loaded)
+    logger.info("Environment file loaded: %s keys=%d", file_path, loaded)
     return True
 
 
@@ -57,7 +57,9 @@ def _load_env_config() -> None:
     explicit_file = os.getenv("ETL_ENV_FILE")
     if explicit_file:
         if not _load_env_file(explicit_file):
-            logger.warning("指定的环境变量文件不存在: %s", explicit_file)
+            logger.warning(
+                "Specified environment file does not exist: %s", explicit_file
+            )
         return
 
     if _load_env_file(".env"):
@@ -87,7 +89,7 @@ def main(
 ) -> int:
     start = time.perf_counter()
     logger.info(
-        "日志输出: file=%s file_level=%s console_level=%s",
+        "Log output: file=%s file_level=%s console_level=%s",
         LOG_FILE,
         FILE_LOG_LEVEL,
         CONSOLE_LOG_LEVEL,
@@ -95,22 +97,25 @@ def main(
 
     if not db_password:
         logger.error(
-            "未提供数据库密码：请在 .env/env 或系统环境变量中设置 PGPASSWORD 或 DB_PASSWORD"
+            "Database password is not configured; set PGPASSWORD or DB_PASSWORD in .env/env or the system environment"
         )
         return 4
 
-    # 1. 读取 clean 数据
+    # 1. Read the cleaned data.
     try:
         df = pd.read_csv(csv_path)
         df = df.where(pd.notna(df), None)
         logger.info(
-            "CSV 读取成功: path=%s rows=%d cols=%d", csv_path, len(df), len(df.columns)
+            "CSV read successfully: path=%s rows=%d cols=%d",
+            csv_path,
+            len(df),
+            len(df.columns),
         )
     except Exception as e:
-        logger.error("CSV 读取失败: path=%s err=%s", csv_path, e)
+        logger.error("Failed to read CSV: path=%s err=%s", csv_path, e)
         return 1
 
-    # 2. 连接 PostgreSQL
+    # 2. Connect to PostgreSQL.
     conn = None
     cur = None
     try:
@@ -123,7 +128,7 @@ def main(
         )
         cur = conn.cursor()
         logger.info(
-            "数据库连接成功: db=%s host=%s port=%s user=%s",
+            "Database connection established: db=%s host=%s port=%s user=%s",
             db_name,
             db_host,
             db_port,
@@ -145,8 +150,8 @@ def main(
                 )
 
         except Exception:
-            logger.debug("无法读取现有行数（忽略）", exc_info=True)
-        logger.info("开始同步数据到 PostgreSQL...")
+            logger.debug("Unable to read existing row counts; ignoring", exc_info=True)
+        logger.info("Starting PostgreSQL data synchronization...")
 
         companies_processed = 0
         jobs_inserted = 0
@@ -156,12 +161,12 @@ def main(
             company_name = None
             job_title = None
             try:
-                # ========= Step A：处理公司 =========
+                # ========= Step A: process the company =========
 
                 company_name = row["Company Name"]
                 job_title = row["Job Title"]
 
-                # 公司名为空，直接跳过
+                # Skip rows without a company name.
                 if company_name is None or str(company_name).strip() == "":
                     rows_skipped += 1
                     continue
@@ -201,7 +206,7 @@ def main(
                 company_id = cur.fetchone()[0]
                 companies_processed += 1
 
-                # ========= Step B：插入 jobs =========
+                # ========= Step B: insert the job =========
 
                 cur.execute(
                     """
@@ -233,7 +238,7 @@ def main(
             except Exception as e:
                 conn.rollback()
                 logger.error(
-                    "入库失败（已回滚）: row_index=%s company=%r title=%r err=%s",
+                    "Database insert failed; transaction rolled back: row_index=%s company=%r title=%r err=%s",
                     idx,
                     company_name,
                     job_title,
@@ -241,11 +246,11 @@ def main(
                 )
                 return 2
 
-        # 3. 提交事务
+        # 3. Commit the transaction.
         conn.commit()
         elapsed = time.perf_counter() - start
         logger.info(
-            "ETL 导入成功: companies_processed=%d jobs_processed=%d rows_skipped=%d elapsed=%.2fs",
+            "ETL load completed successfully: companies_processed=%d jobs_processed=%d rows_skipped=%d elapsed=%.2fs",
             companies_processed,
             jobs_inserted,
             rows_skipped,
@@ -259,11 +264,11 @@ def main(
                 conn.rollback()
             except Exception as rollback_error:
                 logger.warning(
-                    "数据库事务回滚失败: %s",
+                    "Database transaction rollback failed: %s",
                     rollback_error,
                 )
 
-        logger.error("数据库连接/初始化失败: err=%s", e)
+        logger.error("Database connection or initialization failed: err=%s", e)
         return 3
     finally:
         if cur is not None:

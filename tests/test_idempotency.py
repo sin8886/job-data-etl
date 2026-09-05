@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from load_to_postgres import main
 
-# 加载 .env
+# Load .env.
 load_dotenv()
 
 
@@ -22,7 +22,7 @@ CSV_PATH = str(BASE_DIR / "data" / "clean" / "jobs_clean.csv")
 
 def get_jobs_count():
     """
-    查询 jobs 表数据量
+    Query the number of rows in the jobs table.
     """
     conn = psycopg2.connect(
         dbname=DB_NAME,
@@ -41,7 +41,7 @@ def get_jobs_count():
 
 def get_companies_count():
     """
-    查询 companies 表数据量
+    Query the number of rows in the companies table.
     """
     conn = psycopg2.connect(
         dbname=DB_NAME,
@@ -85,9 +85,9 @@ def get_case_insensitive_duplicate_company_groups():
 
 def test_idempotent_load():
     """
-    测试 ETL 重复运行不会产生重复数据
+    Verify that repeated ETL runs do not create duplicate data.
     """
-    # 第一次运行 ETL
+    # Run the ETL for the first time.
     result1 = main(
         csv_path=CSV_PATH,
         db_name=DB_NAME,
@@ -101,7 +101,7 @@ def test_idempotent_load():
     jobs_first = get_jobs_count()
     companies_first = get_companies_count()
 
-    # 第二次运行 ETL
+    # Run the ETL a second time.
     result2 = main(
         csv_path=CSV_PATH,
         db_name=DB_NAME,
@@ -115,7 +115,7 @@ def test_idempotent_load():
     jobs_second = get_jobs_count()
     companies_second = get_companies_count()
 
-    # 核心幂等验证
+    # Verify idempotency.
     assert jobs_first == jobs_second
     assert companies_first == companies_second
     assert get_case_insensitive_duplicate_company_groups() == 0

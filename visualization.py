@@ -1,4 +1,3 @@
-
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -9,13 +8,13 @@ OUTPUT_FILE = "top10_companies.png"
 
 def plot_top_companies(input_file, output_file):
 
-    # 读取清洗后的数据
+    # Read the cleaned data.
     df = pd.read_csv(input_file)
 
-    # 公司招聘数量统计
+    # Count job postings by company.
     company_counts = df["Company Name"].value_counts().head(10)
 
-    # 绘图
+    # Create the chart.
     plt.figure(figsize=(10, 6))
 
     company_counts.sort_values().plot.barh()

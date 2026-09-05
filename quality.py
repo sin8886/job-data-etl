@@ -1,7 +1,5 @@
 def check_row_count(df, min_rows=1):
-    """
-    检查数据行数
-    """
+    """Check the number of rows in the data frame."""
 
     row_count = len(df)
 
@@ -15,16 +13,11 @@ def check_row_count(df, min_rows=1):
 
 
 def check_null_rate(df, threshold=0.2):
-    """
-    检查关键字段空值率
-
-    只检查影响业务的数据字段，
-    普通描述字段允许存在缺失。
-    """
+    """Check null rates for fields that affect business processing."""
 
     null_rate = df.isna().mean()
 
-    # ETL关键字段
+    # Critical ETL fields
     critical_columns = ["Job Title", "Company Name", "Location", "Industry"]
 
     failed_columns = []
@@ -47,14 +40,7 @@ def check_null_rate(df, threshold=0.2):
 
 
 def check_unique(df, column):
-    """
-    检查字段唯一性
-
-    例如：
-    job_id
-    company_id
-
-    """
+    """Check whether the requested field contains duplicate values."""
 
     if column not in df.columns:
         return {

@@ -1,38 +1,38 @@
-# 数据清洗配置文件
+# Data cleaning configuration.
 
-# 输入输出路径
+# Input and output paths.
 input_path: data/raw/DataAnalyst.csv
 output_path: data/clean/jobs_clean.csv
 
-# 无效值替换（将指定值替换为 null）
+# Replace configured invalid values with null.
 replace_invalid_values:
   -1: null
 
-# 公司名清洗规则
+# Company name cleaning rules.
 company_name:
   enabled: true
   columns:
     - Company Name
-  split_on: "\n" # 按换行符拆分
-  split_index: 0 # 取拆分后的第一部分
+  split_on: "\n" # Split on line breaks.
+  split_index: 0 # Keep the first segment.
 
-# 薪资估算清洗规则
+# Salary estimate cleaning rules.
 salary_estimate:
   enabled: true
   columns:
     - Salary Estimate
-  replace_texts: # 要移除的文本列表
+  replace_texts: # Text values to remove.
     - "(Glassdoor est.)"
 
-# 去重规则
+# Deduplication rules.
 dedup:
   enabled: true
 
-# 要删除的列
+# Columns to drop.
 drop_columns:
   - "Unnamed: 0"
 
-# 缺失率统计和告警
+# Null-rate monitoring and warnings.
 missing_rate:
   columns:
     - Company Name
@@ -40,4 +40,4 @@ missing_rate:
     - Location
     - Job Title
     - Industry
-  warn_threshold: 0.30 # 30% 以上缺失率警告
+  warn_threshold: 0.30 # Warn when the null rate is at least 30%.

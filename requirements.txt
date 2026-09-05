@@ -6,3 +6,4 @@ PyYAML==6.0.3
 matplotlib==3.11.1
 typer==0.25.1
 boto3
+prefect==3.8.3

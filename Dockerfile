@@ -1,17 +1,17 @@
-# 使用官方 Python 3.11 作为基础镜像
+# Use the official Python 3.11 base image.
 FROM python:3.11-slim
 
-# 设置容器内的工作目录
+# Set the container working directory.
 WORKDIR /app
 
-# 先复制依赖文件
+# Copy the dependency manifest first.
 COPY requirements.txt .
 
-# 安装 Python 依赖
+# Install Python dependencies.
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制项目所有代码到容器
+# Copy the project into the image.
 COPY . .
 
-# 默认命令：先显示容器已启动
+# Keep the default image command lightweight; Compose provides the app command.
 CMD ["python", "--version"]

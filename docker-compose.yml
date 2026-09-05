@@ -47,6 +47,7 @@ services:
 
     volumes:
       - .:/app
+      - ${USERPROFILE}/.aws:/root/.aws:ro
 
     command: python main.py
 

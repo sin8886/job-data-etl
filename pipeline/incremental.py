@@ -40,7 +40,7 @@ def filter_existing_records(df: pd.DataFrame) -> pd.DataFrame:
 
     cur = conn.cursor()
 
-    # 一次性读取数据库所有业务键
+    # Load all existing business keys in one query.
     cur.execute("""
         SELECT
             lower(btrim(c.name)),
@@ -68,7 +68,7 @@ def filter_existing_records(df: pd.DataFrame) -> pd.DataFrame:
         len(existing_keys),
     )
 
-    # Python 内存中过滤
+    # Filter records in memory.
     new_df = df[
         ~df.apply(
             lambda row: (

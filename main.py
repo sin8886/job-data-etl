@@ -56,7 +56,7 @@ def main():
 
     logger.info("ETL Pipeline Start")
 
-    # 创建一次 Pipeline Run
+    # Create one pipeline run
     run_id = create_run("backfill" if args.backfill else "incremental")
 
     current_step = "UNKNOWN"

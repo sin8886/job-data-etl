@@ -1,8 +1,10 @@
-![alt text](mermaid-diagram-2026-09-08-113204.png)
-
 # Job Data ETL Pipeline
 
 A production-oriented Python ETL pipeline for processing job-posting data. The project demonstrates configurable cleaning, data-quality validation, incremental loading, PostgreSQL upserts, S3 archival, audit tracking, retries, Prefect orchestration, Docker-based local infrastructure, and GitHub Actions CI.
+
+## Architecture
+
+![Job Data ETL Pipeline Architecture](docs/architecture.png)
 
 ## What This Project Does
 

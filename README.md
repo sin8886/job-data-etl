@@ -1,3 +1,5 @@
+![alt text](mermaid-diagram-2026-09-08-113204.png)
+
 # Job Data ETL Pipeline
 
 A production-oriented Python ETL pipeline for processing job-posting data. The project demonstrates configurable cleaning, data-quality validation, incremental loading, PostgreSQL upserts, S3 archival, audit tracking, retries, Prefect orchestration, Docker-based local infrastructure, and GitHub Actions CI.
@@ -173,6 +175,12 @@ The flow delegates to the existing `main()` entry point and does not introduce a
 ## S3 Storage
 
 During the incremental pipeline, the raw input is uploaded under `raw/` and the cleaned output is uploaded under `clean/`. The S3 helper validates the bucket and region settings before uploading and reports the destination in the application log.
+
+## Cloud Execution
+
+The ETL pipeline was successfully executed on an AWS EC2 instance, demonstrating cloud-based execution of the data pipeline.
+
+Amazon S3 is used for raw and cleaned data archival, while EC2 provides the cloud execution environment.
 
 ## CI
 

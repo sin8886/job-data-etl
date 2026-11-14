@@ -1,7 +1,20 @@
+
+
+
+
 # Job Data ETL Pipeline
 
 A production-oriented Python ETL pipeline for processing job-posting data. The project demonstrates configurable cleaning, data-quality validation, incremental loading, PostgreSQL upserts, S3 archival, audit tracking, retries, Prefect orchestration, Docker-based local infrastructure, and GitHub Actions CI.
 
+## Video Demonstrations
+
+Four video demonstrations showcasing the Job Data ETL Pipeline:
+
+1. [Demo 1 – Watch on Bilibili](https://www.bilibili.com/video/BV1wasG6TERJ/)
+2. [Demo 2 – Watch on Bilibili](https://www.bilibili.com/video/BV1kasG6KEYi/)
+3. [Demo 3 – Watch on Bilibili](https://www.bilibili.com/video/BV1pasG6TESB/)
+4. [Demo 4 – Watch on Bilibili](https://www.bilibili.com/video/BV1C8sG6qEgZ/)
+   
 ## Architecture
 
 ![Job Data ETL Pipeline Architecture](docs/architecture.png)

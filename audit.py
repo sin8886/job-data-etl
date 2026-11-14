@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import psycopg2
 
@@ -45,7 +45,7 @@ def create_run(run_type="incremental"):
         RETURNING run_id;
         """,
         (
-            datetime.now(timezone.utc),
+            datetime.now(UTC),
             "RUNNING",
             run_type,
         ),
@@ -85,7 +85,7 @@ def update_run(
         WHERE run_id=%s;
         """,
         (
-            datetime.now(timezone.utc),
+            datetime.now(UTC),
             row_count,
             status,
             failed_step,
